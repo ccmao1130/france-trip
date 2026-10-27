@@ -6,11 +6,11 @@
 <title>My France Trip Map</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..700;1,6..96,400..600&family=Jost:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..700;1,6..96,400..600&family=Jost:wght@400;500;600&family=Montserrat:wght@500;600&display=swap">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <style>
-/* Type: Bodoni Moda (headlines, italic asides) + Jost (everything else).
+/* Type: Bodoni Moda (headlines, italic asides), Jost (text), Montserrat caps (buttons).
    Layout: a scrapbook travel journal. Taped title up top, a real map recoloured
    baby blue in a rounded frame (left), the place list as a stack of
    notes (right). Tapping a pin opens a postcard. */
@@ -33,6 +33,7 @@
   --display: "Bodoni Moda", "Didot", "Bodoni 72", Georgia, serif;   /* headlines: Parisian fashion serif */
   --body: "Jost", "Futura", "Avenir Next", system-ui, sans-serif;  /* everything else: clean geometric sans */
   --hand: "Bodoni Moda", "Didot", Georgia, serif;                 /* small asides, set in italic */
+  --button: "Montserrat", "Avenir Next", system-ui, sans-serif;     /* buttons & chips: small tracked caps */
   --park: #d4efe4;       /* parks in Paris */
   --river: #9ccdfb;      /* the Seine */
   color-scheme: light;   /* one look: always the light baby-blue page */
@@ -50,7 +51,28 @@ body {
 .wrap { max-width: 1240px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 48px; }
 
 /* ---------- header ---------- */
-header { display: grid; gap: 10px; margin-bottom: 22px; }
+header {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 380px); gap: 10px 32px;
+  align-items: start; margin-bottom: 22px;
+}
+.head-main { display: grid; gap: 10px; min-width: 0; }
+@media (max-width: 860px) { header { grid-template-columns: minmax(0, 1fr); } }
+
+/* Travel tip: a small note card pinned beside the title */
+.tip {
+  position: relative; background: var(--card); border: 1.5px dashed var(--coast); border-radius: 18px;
+  padding: 18px 20px 16px; box-shadow: var(--shadow); transform: rotate(.6deg); margin-top: 6px;
+}
+.tip::before {  /* washi tape */
+  content: ""; position: absolute; top: -10px; left: 50%; width: 84px; height: 20px; margin-left: -42px;
+  background: var(--butter); opacity: .9; transform: rotate(-3deg); border-radius: 2px;
+}
+.tip .eyebrow { font: 600 10px var(--button); letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+.tip h2 { font: 500 21px/1.2 var(--display); margin: 4px 0 8px; text-wrap: balance; }
+.tip p { margin: 0 0 10px; font-size: 14px; line-height: 1.5; }
+.tip ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: 13.5px; line-height: 1.45; }
+.tip li { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 6px; }
+.tip li b { font-weight: 600; }
 h1 {
   font-family: var(--display); font-weight: 500; font-size: clamp(38px, 6vw, 64px); letter-spacing: -.01em;
   line-height: 1.1; margin: 0; text-wrap: balance;
@@ -82,14 +104,14 @@ h1 .sparkle { color: var(--accent); }
 @media (max-width: 860px) { .map-card { position: relative; top: 0; } }
 .regions { display: flex; flex-wrap: wrap; gap: 6px; padding: 12px 12px 0; }
 .chip {
-  font: 500 13px/1 var(--body); color: var(--ink); background: var(--card);
+  font: 600 11px/1 var(--button); letter-spacing: .08em; text-transform: uppercase; color: var(--ink); background: var(--card);
   border: 1.5px solid var(--line); border-radius: 999px; padding: 8px 12px; cursor: pointer;
   display: inline-flex; align-items: center; gap: 6px; transition: transform .15s, background .15s, border-color .15s;
 }
 .chip:hover { transform: translateY(-1px); border-color: var(--coast); }
 .chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .chip:focus-visible, button:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-.chip .n { font-variant-numeric: tabular-nums; opacity: .75; font-weight: 600; }
+.chip .n { font-variant-numeric: tabular-nums; opacity: .7; font-weight: 500; letter-spacing: .02em; }
 
 .map-stage { position: relative; aspect-ratio: 1080 / 1010; max-height: calc(100vh - 110px); width: 100%; }
 #map { position: absolute; inset: 0; }
@@ -201,7 +223,7 @@ h1 .sparkle { color: var(--accent); }
 .pc-foot { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
 .addr { font-size: 13px; color: var(--ink-soft); min-width: 0; flex: 1 1 200px; }
 .btn {
-  display: inline-flex; align-items: center; gap: 6px; font: 600 14px var(--body); text-decoration: none;
+  display: inline-flex; align-items: center; gap: 6px; font: 600 12px var(--button); letter-spacing: .08em; text-transform: uppercase; text-decoration: none;
   padding: 10px 16px; border-radius: 999px; border: 2px solid var(--accent); background: var(--accent); color: var(--accent-ink); cursor: pointer;
 }
 .btn.ghost { background: transparent; color: var(--ink); border-color: var(--line); }
@@ -214,9 +236,21 @@ footer { margin-top: 28px; font-family: var(--hand); font-style: italic; font-we
 
 <div class="wrap">
   <header>
+    <div class="head-main">
     <h1><span class="tape">My France Trip</span> <span class="sparkle">✦</span></h1>
     <p class="intro">I keep sending myself tiktoks about France without ever rewatching them. So I thought, “Why not make a map?”</p>
     <div class="stats" id="stats"></div>
+    </div>
+    <aside class="tip" aria-labelledby="tipQ">
+      <div class="eyebrow">Travel tip</div>
+      <h2 id="tipQ">When is the best time to visit France?</h2>
+      <p>Late spring (May–June) and early fall (September–early October). The weather is mild, the days are long, and it's less crowded and cheaper than July and August.</p>
+      <ul>
+        <li><span aria-hidden="true">🗼</span><span><b>Paris:</b> April–June or September. Many small shops and restaurants close for a few weeks in August.</span></li>
+        <li><span aria-hidden="true">🌊</span><span><b>Côte d'Azur:</b> June or September, when the sea is warm and the beaches are calmer.</span></li>
+        <li><span aria-hidden="true">🎄</span><span><b>Colmar &amp; Alsace:</b> late November–December for the Christmas markets.</span></li>
+      </ul>
+    </aside>
   </header>
 
   <div class="layout">
