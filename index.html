@@ -746,6 +746,7 @@ footer { margin-top: 28px; font-family: var(--hand); font-style: italic; font-we
     const b = e.target.closest("[data-trip]"); if (!b) return;
     const t = TRIPS[Number(b.dataset.trip)];
     showTab("places");
+    map.resize();   // the map was hidden on the other tab; measure it before fitting
     const ps = t.pins.map(id => PLACES[id]);
     if (ps.length === 1) map.flyTo({ center: [ps[0].lng, ps[0].lat], zoom: 14 });
     else map.fitBounds(boundsOf(ps), { padding: 60, maxZoom: 14 });
