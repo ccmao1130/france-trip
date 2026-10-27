@@ -6,4 +6,4 @@ A map of the places in France I keep saving from TikTok.
 
 This repo only holds the published page. It is rebuilt every Monday by a private pipeline that reads TikToks and Google Maps links from Discord, asks Claude which places they mention, and pins them.
 
-Map data © OpenStreetMap contributors.
+Map tiles © OpenFreeMap, © OpenMapTiles, data © OpenStreetMap contributors.
