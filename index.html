@@ -209,6 +209,9 @@ h1 .sparkle { color: var(--accent); }
 .pc-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: start; }
 .pc-head h3 { font-family: var(--display); font-weight: 600; font-size: 30px; line-height: 1.15; margin: 4px 0 2px; text-wrap: balance; overflow-wrap: anywhere; }
 .pc-where { color: var(--ink-soft); font-weight: 500; font-size: 14px; }
+.price { letter-spacing: .06em; color: color-mix(in srgb, currentColor 35%, transparent); }
+.price b { font-weight: 600; color: var(--ink); }
+.item .sub .price b { color: var(--accent); }
 .stamp {
   width: 64px; height: 72px; display: grid; place-items: center; font-size: 30px;
   border: 3px dotted var(--coast); border-radius: 6px; transform: rotate(4deg); background: var(--paper);
@@ -510,7 +513,7 @@ footer { margin-top: 28px; font-family: var(--hand); font-style: italic; font-we
             <div class="body">
               <span class="nm">${esc(p.name)}</span>
               <span class="loc">${esc(where(p))}</span>
-              <span class="sub">${esc(kindLabel(p))}${p.m.length > 1 ? ` · ${p.m.length} posts` : ""}</span>
+              <span class="sub">${esc(kindLabel(p))}<span class="price-slot"></span>${p.m.length > 1 ? ` · ${p.m.length} posts` : ""}</span>
             </div>
           </div>`;
         }).join("")}
@@ -530,30 +533,36 @@ footer { margin-top: 28px; font-family: var(--hand); font-style: italic; font-we
   });
   listEl.addEventListener("keydown", e => { const it = e.target.closest(".item"); if (it && e.target === it && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openCard(Number(it.dataset.id)); } });
 
-  // ---------- place photos (Google Places, fetched live; only place IDs are stored) ----------
+  // ---------- place photo + price (Google Places, fetched live; only place IDs are stored) ----------
   const MAPS_KEY = "AIzaSyBm4749U-xAES2PBxkV00Vi3vpAEa-_F_E";
-  const photoCache = new Map();
-  // One billed lookup per place per visit: Place Details for the photo name, then the
-  // media call with skipHttpRedirect, which returns a direct image link we reuse.
-  function placePhoto(pid) {
-    if (!MAPS_KEY || !pid) return Promise.resolve(null);
-    if (!photoCache.has(pid)) {
+  const infoCache = new Map();
+  const PRICE = { PRICE_LEVEL_INEXPENSIVE: 1, PRICE_LEVEL_MODERATE: 2, PRICE_LEVEL_EXPENSIVE: 3, PRICE_LEVEL_VERY_EXPENSIVE: 4 };
+  const SHOW_PRICE = new Set(["food"]);
+  // "$$" out of four, with the unused ones faded
+  const priceHtml = n => n ? `<span class="price" aria-label="Price level ${n} of 4"><b>${"$".repeat(n)}</b>${"$".repeat(4 - n)}</span>` : "";
+  // One billed lookup per place per visit: Place Details (photo name + price level), then the
+  // photo media call with skipHttpRedirect, which returns a direct image link we reuse.
+  function placeInfo(pid) {
+    if (!MAPS_KEY || !pid) return Promise.resolve({ photo: null, price: 0 });
+    if (!infoCache.has(pid)) {
       let saved = null;
-      try { saved = JSON.parse(sessionStorage.getItem("ph:" + pid) || "null"); } catch (_) {}
-      photoCache.set(pid, saved ? Promise.resolve(saved) :
-        fetch(`https://places.googleapis.com/v1/places/${encodeURIComponent(pid)}?fields=photos&key=${MAPS_KEY}`)
+      try { saved = JSON.parse(sessionStorage.getItem("pi:" + pid) || "null"); } catch (_) {}
+      infoCache.set(pid, saved ? Promise.resolve(saved) :
+        fetch(`https://places.googleapis.com/v1/places/${encodeURIComponent(pid)}?fields=photos,priceLevel&key=${MAPS_KEY}`)
           .then(r => r.ok ? r.json() : null)
           .then(d => {
-            const ph = d?.photos?.[0]; if (!ph) return null;
+            const price = PRICE[d?.priceLevel] || 0;
+            const ph = d?.photos?.[0];
+            if (!ph) return { photo: null, price };
             const a = ph.authorAttributions?.[0] || {};
             return fetch(`https://places.googleapis.com/v1/${ph.name}/media?maxWidthPx=800&skipHttpRedirect=true&key=${MAPS_KEY}`)
               .then(r => r.ok ? r.json() : null)
-              .then(m => m?.photoUri ? { src: m.photoUri, by: a.displayName || "", uri: a.uri || "" } : null);
+              .then(m => ({ photo: m?.photoUri ? { src: m.photoUri, by: a.displayName || "", uri: a.uri || "" } : null, price }));
           })
-          .then(ph => { try { sessionStorage.setItem("ph:" + pid, JSON.stringify(ph)); } catch (_) {} return ph; })
-          .catch(() => null));
+          .then(info => { if (info) try { sessionStorage.setItem("pi:" + pid, JSON.stringify(info)); } catch (_) {} return info || { photo: null, price: 0 }; })
+          .catch(() => ({ photo: null, price: 0 })));
     }
-    return photoCache.get(pid);
+    return infoCache.get(pid);
   }
   // Card photos load only as cards scroll into view.
   const photoObserver = new IntersectionObserver(entries => {
@@ -561,8 +570,11 @@ footer { margin-top: 28px; font-family: var(--hand); font-style: italic; font-we
   }, { rootMargin: "300px 0px" });
   function loadCardPhoto(el) {
     const p = PLACES[Number(el.dataset.id)];
-    placePhoto(p.pid).then(ph => {
-      if (!ph || !el.isConnected) return;
+    placeInfo(p.pid).then(({ photo: ph, price }) => {
+      if (!el.isConnected) return;
+      const slot = el.closest(".item")?.querySelector(".price-slot");
+      if (slot && SHOW_PRICE.has(p.cat)) slot.innerHTML = price ? " · " + priceHtml(price) : "";
+      if (!ph) return;
       const img = new Image();
       img.alt = "";
       img.onload = () => img.classList.add("in");
@@ -573,8 +585,10 @@ footer { margin-top: 28px; font-family: var(--hand); font-style: italic; font-we
   function fillPhoto(id) {
     const el = document.getElementById("pcPhoto"); if (!el) return;
     const p = PLACES[id];
-    placePhoto(p.pid).then(ph => {
+    placeInfo(p.pid).then(({ photo: ph, price }) => {
       if (state.sel !== id || !el.isConnected) return;
+      const where = document.getElementById("pcWhere");
+      if (where && SHOW_PRICE.has(p.cat) && price) where.insertAdjacentHTML("beforeend", " · " + priceHtml(price));
       if (!ph) { el.remove(); return; }
       const img = new Image();
       img.alt = `Photo of ${p.name}`;
@@ -599,7 +613,7 @@ footer { margin-top: 28px; font-family: var(--hand); font-style: italic; font-we
         <div>
           <span class="tag">${esc(kindLabel(p))}</span>
           <h3 id="pcName">${esc(p.name)}</h3>
-          <div class="pc-where">${esc(p.city)}</div>
+          <div class="pc-where" id="pcWhere">${esc(where(p))}</div>
         </div>
         <div class="stamp" style="background:${c.color}" aria-hidden="true">${c.emoji}</div>
       </div>
