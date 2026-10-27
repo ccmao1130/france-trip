@@ -149,28 +149,39 @@ h1 .sparkle { color: var(--accent); }
 .toolbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: space-between; }
 .count { font-family: var(--hand); font-style: italic; font-weight: 400; font-size: 17px; color: var(--ink-soft); }
 
-.city { display: grid; gap: 8px; }
+.city { display: grid; gap: 10px; }
 .city h2 {
   font-family: var(--display); font-weight: 500; font-size: 28px; line-height: 1.15; margin: 10px 0 0;
   display: flex; align-items: baseline; gap: 8px;
 }
 .city h2 small { font: 500 13px var(--body); color: var(--ink-soft); }
+/* Cards lead with a photo: 2 columns in the side panel, 1 on phones */
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 170px), 1fr)); gap: 12px; }
 .item {
-  display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 10px; align-items: center;
-  background: var(--card); border: 1.5px solid var(--line); border-radius: 18px; padding: 10px 12px;
-  cursor: pointer; text-align: left; color: var(--ink); font: inherit; width: 100%;
-  transition: transform .15s, border-color .15s;
+  position: relative; display: flex; flex-direction: column; min-width: 0; padding: 0; overflow: hidden;
+  background: var(--card); border: 1.5px solid var(--line); border-radius: 18px;
+  cursor: pointer; text-align: left; color: var(--ink); font: inherit;
+  transition: transform .15s, border-color .15s, box-shadow .15s;
 }
-.item:hover { transform: rotate(-.4deg) translateY(-1px); border-color: var(--coast); }
+.item:hover { transform: rotate(-.4deg) translateY(-2px); border-color: var(--coast); box-shadow: var(--shadow); }
 .item.on { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
+.item .ph { position: relative; aspect-ratio: 4 / 3; display: grid; place-items: center; overflow: hidden; }
+.item .ph-emoji { font-size: 34px; }
+.item .ph img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .35s; }
+.item .ph img.in { opacity: 1; }
+.item .body { display: grid; gap: 2px; padding: 10px 12px 12px; min-width: 0; }
+.item .nm { font-weight: 600; font-size: 15px; line-height: 1.25; overflow-wrap: anywhere; }
+.item .loc { font-size: 13px; color: var(--ink-soft); overflow-wrap: anywhere; }
+.item .sub { margin-top: 4px; font: 600 10px var(--button); letter-spacing: .1em; text-transform: uppercase; color: var(--accent); }
+.item .heart-btn {
+  position: absolute; top: 8px; right: 8px; z-index: 1; padding: 6px; border-radius: 50%;
+  background: rgba(255, 255, 255, .92); color: #c9d9ef; box-shadow: 0 2px 6px rgba(47, 59, 99, .15);
+}
+.item .heart-btn svg { width: 18px; height: 18px; }
 .sticker {
   width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-size: 20px;
   border: 2px solid var(--card); box-shadow: 0 1px 0 var(--line);
 }
-.item .t { min-width: 0; }
-.item .nm { font-weight: 600; overflow-wrap: anywhere; }
-.item .sub { font-size: 13px; color: var(--ink-soft); }
-.item .meta { display: flex; gap: 6px; align-items: center; }
 .tag { font-size: 11px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; padding: 3px 8px; border-radius: 999px; background: var(--paper-2); color: var(--ink-soft); white-space: nowrap; }
 .heart-btn {
   border: 0; background: none; cursor: pointer; padding: 4px; line-height: 0; color: var(--line);
@@ -306,6 +317,11 @@ footer { margin-top: 28px; font-family: var(--hand); font-style: italic; font-we
     other:        { label: "Other",         emoji: "✨", color: "#f0ecff" },
   };
   const HEART = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 21s-7.5-4.6-9.6-9.2C.8 8.3 3 4.5 6.7 4.5c2.1 0 3.6 1.2 4.3 2.4.7-1.2 2.2-2.4 4.3-2.4 3.7 0 5.9 3.8 4.3 7.3C19.5 16.4 12 21 12 21z"/></svg>';
+  function where(p) {
+    const m = (p.addr || "").match(/\b75(0(\d\d)|116)\b/);
+    if (m) { const n = m[2] ? Number(m[2]) : 16; return `Paris ${n}${n === 1 ? "er" : "e"}`; }
+    return p.city || "France";
+  }
   const kindLabel = p => (CATS[p.cat] || CATS.other).label + (p.kind ? " · " + p.kind.replace(/^./, c => c.toUpperCase()) : "");
   const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
@@ -485,15 +501,23 @@ footer { margin-top: 28px; font-family: var(--hand); font-style: italic; font-we
     listEl.innerHTML = Object.entries(byCity).sort((a, b) => b[1].length - a[1].length).map(([city, items]) => `
       <div class="city">
         <h2>${esc(city)} <small>${items.length}</small></h2>
+        <div class="cards">
         ${items.map(p => {
           const c = CATS[p.cat] || CATS.other;
-          return `<div class="item${state.sel === p.id ? " on" : ""}" data-id="${p.id}" role="button" tabindex="0">
-            <span class="sticker" style="background:${c.color}" aria-hidden="true">${c.emoji}</span>
-            <span class="t"><span class="nm">${esc(p.name)}</span><br><span class="sub">${esc(kindLabel(p))}${p.m.length > 1 ? ` · in ${p.m.length} posts` : ""}</span></span>
-            <span class="meta"><button type="button" class="heart-btn" data-heart="${p.id}" aria-pressed="${hearts.has(key(p))}" aria-label="Want to go to ${esc(p.name)}">${HEART}</button></span>
+          return `<div class="item${state.sel === p.id ? " on" : ""}" data-id="${p.id}" role="button" tabindex="0" aria-label="${esc(p.name)}, ${esc(where(p))}">
+            <div class="ph" data-id="${p.id}" style="background:${c.color}"><span class="ph-emoji" aria-hidden="true">${c.emoji}</span></div>
+            <button type="button" class="heart-btn" data-heart="${p.id}" aria-pressed="${hearts.has(key(p))}" aria-label="Want to go to ${esc(p.name)}">${HEART}</button>
+            <div class="body">
+              <span class="nm">${esc(p.name)}</span>
+              <span class="loc">${esc(where(p))}</span>
+              <span class="sub">${esc(kindLabel(p))}${p.m.length > 1 ? ` · ${p.m.length} posts` : ""}</span>
+            </div>
           </div>`;
         }).join("")}
+        </div>
       </div>`).join("");
+    photoObserver.disconnect();
+    listEl.querySelectorAll(".ph[data-id]").forEach(el => photoObserver.observe(el));
   }
   function toggleHeart(id) {
     const k = key(PLACES[id]);
@@ -509,18 +533,42 @@ footer { margin-top: 28px; font-family: var(--hand); font-style: italic; font-we
   // ---------- place photos (Google Places, fetched live; only place IDs are stored) ----------
   const MAPS_KEY = "AIzaSyBm4749U-xAES2PBxkV00Vi3vpAEa-_F_E";
   const photoCache = new Map();
+  // One billed lookup per place per visit: Place Details for the photo name, then the
+  // media call with skipHttpRedirect, which returns a direct image link we reuse.
   function placePhoto(pid) {
     if (!MAPS_KEY || !pid) return Promise.resolve(null);
-    if (!photoCache.has(pid)) photoCache.set(pid,
-      fetch(`https://places.googleapis.com/v1/places/${encodeURIComponent(pid)}?fields=photos&key=${MAPS_KEY}`)
-        .then(r => r.ok ? r.json() : null)
-        .then(d => {
-          const ph = d?.photos?.[0]; if (!ph) return null;
-          const a = ph.authorAttributions?.[0] || {};
-          return { src: `https://places.googleapis.com/v1/${ph.name}/media?maxWidthPx=900&key=${MAPS_KEY}`, by: a.displayName || "", uri: a.uri || "" };
-        })
-        .catch(() => null));
+    if (!photoCache.has(pid)) {
+      let saved = null;
+      try { saved = JSON.parse(sessionStorage.getItem("ph:" + pid) || "null"); } catch (_) {}
+      photoCache.set(pid, saved ? Promise.resolve(saved) :
+        fetch(`https://places.googleapis.com/v1/places/${encodeURIComponent(pid)}?fields=photos&key=${MAPS_KEY}`)
+          .then(r => r.ok ? r.json() : null)
+          .then(d => {
+            const ph = d?.photos?.[0]; if (!ph) return null;
+            const a = ph.authorAttributions?.[0] || {};
+            return fetch(`https://places.googleapis.com/v1/${ph.name}/media?maxWidthPx=800&skipHttpRedirect=true&key=${MAPS_KEY}`)
+              .then(r => r.ok ? r.json() : null)
+              .then(m => m?.photoUri ? { src: m.photoUri, by: a.displayName || "", uri: a.uri || "" } : null);
+          })
+          .then(ph => { try { sessionStorage.setItem("ph:" + pid, JSON.stringify(ph)); } catch (_) {} return ph; })
+          .catch(() => null));
+    }
     return photoCache.get(pid);
+  }
+  // Card photos load only as cards scroll into view.
+  const photoObserver = new IntersectionObserver(entries => {
+    for (const e of entries) if (e.isIntersecting) { photoObserver.unobserve(e.target); loadCardPhoto(e.target); }
+  }, { rootMargin: "300px 0px" });
+  function loadCardPhoto(el) {
+    const p = PLACES[Number(el.dataset.id)];
+    placePhoto(p.pid).then(ph => {
+      if (!ph || !el.isConnected) return;
+      const img = new Image();
+      img.alt = "";
+      img.onload = () => img.classList.add("in");
+      img.src = ph.src;
+      el.append(img);
+    });
   }
   function fillPhoto(id) {
     const el = document.getElementById("pcPhoto"); if (!el) return;
