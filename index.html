@@ -1414,6 +1414,10 @@ footer { margin-top: 28px; font-family: var(--hand); font-style: italic; font-we
   });
   const hotelBudgetBtn = document.getElementById("hotelBudget");
   hotelBudgetBtn.onclick = () => { hotelBudgetOnly = !hotelBudgetOnly; hotelBudgetBtn.setAttribute("aria-pressed", hotelBudgetOnly); renderHotels(); renderPins(); };
+  // own loader: the Places list resets the shared one whenever it redraws
+  const hotelObserver = new IntersectionObserver(entries => {
+    for (const e of entries) if (e.isIntersecting) { hotelObserver.unobserve(e.target); loadCardPhoto(e.target); }
+  }, { rootMargin: "300px 0px" });
   function renderHotels() {
     const hs = visible();
     hotelCardsEl.innerHTML = hs.map(h => `<div class="item${state.sel === h.id ? " on" : ""}" data-id="${h.id}" role="button" tabindex="0" aria-label="${esc(h.name)}, ${esc(h.hotel.area)}">
@@ -1427,7 +1431,8 @@ footer { margin-top: 28px; font-family: var(--hand); font-style: italic; font-we
           <span class="why">${esc(h.m[0].note)}</span>
         </div>
       </div>`).join("") || `<div class="empty">No hotels match. Clear the budget filter.</div>`;
-    hotelCardsEl.querySelectorAll(".ph[data-id]").forEach(el => photoObserver.observe(el));
+    hotelObserver.disconnect();
+    hotelCardsEl.querySelectorAll(".ph[data-id]").forEach(el => hotelObserver.observe(el));
   }
   hotelCardsEl.addEventListener("click", e => {
     const hb = e.target.closest("[data-heart]"); if (hb) { e.stopPropagation(); toggleHeart(Number(hb.dataset.heart)); renderHotels(); return; }
